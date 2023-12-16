@@ -8,13 +8,13 @@ package net.intelie.challenges;
  * event event store.
  */
 public interface EventStore {
+  
     /**
      * Stores an event
      *
      * @param event
      */
     void insert(Event event);
-
 
     /**
      * Removes all events of specific type.
