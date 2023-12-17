@@ -8,11 +8,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class InMemoryEventStore implements EventStore {
 
     // I'm using the ConcurrentNavigableMap to avoid the concurrence problems.
-    // At first, I was implementing the solution with the Semaphore class for everything, but
+    // At first, I was implementing the solution with the Semaphore class for everything, 
+    // but since I discovered the implemented concurrent classes, 
     // I thought it would be easier and simpler to use a class that already deals
     // with concurrence and is available in the java.util package. 
     private final ConcurrentHashMap<String, ConcurrentNavigableMap<Long, Event>> eventMap = new ConcurrentHashMap<>();
-    // TODO: Check if there exists ConcurrentMap -> Better than ConcurrentNavigableMap
 
     /**
      * Stores an event.
@@ -21,13 +21,8 @@ public class InMemoryEventStore implements EventStore {
      */
     @Override
     public void insert(Event event) {
-
+        // TODO: Check why I cant initialize with a ConcurrentNavigableMap
         ConcurrentNavigableMap<Long, Event> events = eventMap.computeIfAbsent(event.type(), k -> new ConcurrentSkipListMap<Long, Event>());
-        // ConcurrentNavigableMap<Long, Event> events = eventMap.get(event.type());
-
-        // if (events == null) {
-        //     events = new ConcurrentSkipListMap<>();
-        // }
 
         events.put(event.timestamp(), event);
         eventMap.put(event.type(), events);
@@ -74,9 +69,8 @@ public class InMemoryEventStore implements EventStore {
             ConcurrentNavigableMap<Long, Event> filteredEvents = eventsType.subMap(startTime, true, endTime, false);
             return new InMemoryEventIterator(type, filteredEvents, eventMap);
         } else {
-            // TODO: Throw error in this situation
             throw new IllegalArgumentException("Type not found: " + type);
-            // return new InMemoryEventIterator(type, new ConcurrentSkipListMap<>(), eventMap);
         }
     }
 
+}

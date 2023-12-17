@@ -10,6 +10,7 @@ public class InMemoryEventIterator implements EventIterator {
     private final Iterator<ConcurrentNavigableMap.Entry<Long, Event>> iterator;
     private final String type;
     private final ConcurrentHashMap<String, ConcurrentNavigableMap<Long, Event>> eventMap;
+    private Event currentEvent;
 
     /**
      * Constructs an iterator for the specified type and events.
@@ -21,6 +22,7 @@ public class InMemoryEventIterator implements EventIterator {
         this.iterator = events.entrySet().iterator();
         this.type = type;
         this.eventMap = eventMap;
+        this.currentEvent = null;
     }
 
     /**
@@ -30,7 +32,13 @@ public class InMemoryEventIterator implements EventIterator {
      */
     @Override
     public boolean moveNext() {
-        return iterator.hasNext();
+        if (iterator.hasNext()) {
+            currentEvent = iterator.next().getValue();
+            return true;
+        } else {
+            currentEvent = null;
+            return false;
+        }
     }
 
     /**
@@ -41,10 +49,11 @@ public class InMemoryEventIterator implements EventIterator {
      */
     @Override
     public Event current() {
-        if (!moveNext()) {
+        if (currentEvent != null) {
+            return currentEvent;
+        } else {
             throw new IllegalStateException("No current event");
         }
-        return iterator.next().getValue();
     }
 
     @Override
