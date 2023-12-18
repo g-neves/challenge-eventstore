@@ -57,7 +57,7 @@ public class InMemoryEventIterator implements EventIterator {
         if (currentEvent != null) {
             return currentEvent;
         } else {
-            throw new IllegalStateException("No current event"); // Very beginning of very end of the iterator
+            throw new IllegalStateException("No current event"); // Very beginning or very end of the iterator
         }
     }
 

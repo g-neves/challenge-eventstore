@@ -143,8 +143,9 @@ public class EventTest {
         Event event3 = new Event("some_type", 4L); // This one should not be filtered in query
         eventStore.insert(event1);
         eventStore.insert(event2);
+        eventStore.insert(event3);
 
-        EventIterator iterator = eventStore.query("some_type", 0L, 3L);
+        EventIterator iterator = eventStore.query("some_type", 0L, 4L);
         assertTrue(iterator.moveNext());
         assertEquals(event1, iterator.current());
         assertTrue(iterator.moveNext());
