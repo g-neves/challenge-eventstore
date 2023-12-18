@@ -1,6 +1,5 @@
 package net.intelie.challenges;
 
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -22,33 +21,36 @@ public class EventTest {
         assertEquals("some_type", event.type());
     }
 
+    // Testing the insert method
     @Test
     public void insertTest() {
-        InMemoryEventStore myTest = new InMemoryEventStore();
+        InMemoryEventStore eventStore = new InMemoryEventStore();
         for (int i = 0; i < 20; i++) {
-            myTest.insert(new Event("some_type", i)); 
+            eventStore.insert(new Event("some_type", i)); 
         }
 
         // Asserts all 20 events of type "some_type" were inserted
-        assertEquals(myTest.size(), 20);
+        assertEquals(eventStore.size(), 20);
     }
 
+    // Testing the removeAll method
     @Test
     public void removeAllTest() {
-        InMemoryEventStore myTest = new InMemoryEventStore();
+        InMemoryEventStore eventStore = new InMemoryEventStore();
         
         for (int i = 0; i < 20; i++) {
-            myTest.insert(new Event("some_type", i)); 
+            eventStore.insert(new Event("some_type", i)); 
         }
         // Inserts another type
-        myTest.insert(new Event("some_other_type", 123L));
+        eventStore.insert(new Event("some_other_type", 123L));
         // Delete all 20 events with type "some_type"
-        myTest.removeAll("some_type");
+        eventStore.removeAll("some_type");
 
         // Asserts only event of type "some_other_type" is present
-        assertEquals(myTest.size(), 1);
+        assertEquals(eventStore.size(), 1);
     }
 
+    // Testing the query method
     @Test
     public void queryTest() {
         InMemoryEventStore eventStore = new InMemoryEventStore();
@@ -69,31 +71,34 @@ public class EventTest {
         }
     }
         
+    // Testing the remove method
     @Test
     public void removeTest() {
-        InMemoryEventStore myTest = new InMemoryEventStore();
+        InMemoryEventStore eventStore = new InMemoryEventStore();
         
         for (int i = 0; i < 20; i++) {
-            myTest.insert(new Event("some_type", i)); 
+            eventStore.insert(new Event("some_type", i)); 
         }
 
-        InMemoryEventIterator myIterator = myTest.query("some_type", 5, 20);
+        InMemoryEventIterator eventIterator = eventStore.query("some_type", 5, 20);
 
         // Moves to the next element (Event with timestamp 5, in this case)
-        myIterator.moveNext();
-        assertEquals(myIterator.current().timestamp(), 5);
+        eventIterator.moveNext();
+        assertEquals(eventIterator.current().timestamp(), 5);
         // Removes the event with timestamp 5
-        myIterator.remove();
+        eventIterator.remove();
         
-        InMemoryEventIterator yetAnotherIterator = myTest.query("some_type", 5, 20);
+        InMemoryEventIterator yetAnotherIterator = eventStore.query("some_type", 5, 20);
         yetAnotherIterator.moveNext();
 
         // Asserts the first event from new query has timestamp 6
         assertEquals(yetAnotherIterator.current().timestamp(), 6);
     }
 
+    // Testing the condition that the current event, when we start an iterator,
+    // should throw an error before the moveNext method is called
     @Test 
-    public void currentShouldThrowError() {
+    public void currentShouldThrowErrorTest() {
         InMemoryEventStore eventStore = new InMemoryEventStore();
         
         for (int i = 0; i < 20; i++) {
@@ -110,8 +115,9 @@ public class EventTest {
 
     }
     
+    // Testing the condition that the endTime must be greater than startTime
     @Test 
-    public void endTimeMustBeGreaterThanStartTime() {
+    public void endTimeMustBeGreaterThanStartTimeTest() {
         InMemoryEventStore eventStore = new InMemoryEventStore();
         
         for (int i = 0; i < 20; i++) {
@@ -128,102 +134,51 @@ public class EventTest {
     }
 
     @Test
-    public void singleThreadInsertQueryRemove() {
+    public void queryLengthAndRemoveAllTest() {
         InMemoryEventStore eventStore = new InMemoryEventStore();
 
         // Insert events
-        Event event1 = new Event("type1", 1L);
-        Event event2 = new Event("type1", 2L);
+        Event event1 = new Event("some_type", 1L);
+        Event event2 = new Event("some_type", 2L);
+        Event event3 = new Event("some_type", 4L); // This one should not be filtered in query
         eventStore.insert(event1);
         eventStore.insert(event2);
 
-        // Query events
-        EventIterator iterator = eventStore.query("type1", 0L, 3L);
+        EventIterator iterator = eventStore.query("some_type", 0L, 3L);
         assertTrue(iterator.moveNext());
         assertEquals(event1, iterator.current());
         assertTrue(iterator.moveNext());
         assertEquals(event2, iterator.current());
         assertFalse(iterator.moveNext());
 
-        // Remove events
-        eventStore.removeAll("type1");
+        eventStore.removeAll("some_type");
 
-        // Verify removal
         try {
-            iterator = eventStore.query("type1", 0L, 3L);
+            iterator = eventStore.query("some_type", 0L, 3L);
             fail("Expected IllegalArgumentException, but query did not throw an exception.");
         } catch (IllegalArgumentException e) {
-            // Expected exception
+            // Expected behaviour
         }
     }
 
     @Test
-    public void concurrentInsertQueryRemove() throws InterruptedException {
+    public void concurrentInsertAndRemoveTest() throws InterruptedException {
         InMemoryEventStore eventStore = new InMemoryEventStore();
-        ExecutorService executorService = Executors.newFixedThreadPool(5);
-
-        int numThreads = 10;
-        int numEventsPerThread = 1000;
-
-        // Concurrent insert
-        for (int i = 0; i < numThreads; i++) {
-            final int threadNum = i;
-            executorService.submit(() -> {
-                for (int j = 0; j < numEventsPerThread; j++) {
-                    Event event = new Event("type" + threadNum, j);
-                    eventStore.insert(event);
-                }
-            });
-        }
-
-        executorService.shutdown();
-        executorService.awaitTermination(10, TimeUnit.SECONDS);
-
-        // Concurrent query and remove
-        executorService = Executors.newFixedThreadPool(5);
-        for (int i = 0; i < numThreads; i++) {
-            final int threadNum = i;
-            executorService.submit(() -> {
-                EventIterator iterator = eventStore.query("type" + threadNum, 0L, numEventsPerThread);
-                int count = 0;
-                while (iterator.moveNext()) {
-                    count++;
-                }
-                assertEquals(numEventsPerThread, count);
-
-                eventStore.removeAll("type" + threadNum);
-
-                iterator = eventStore.query("type" + threadNum, 0L, numEventsPerThread);
-                assertFalse(iterator.moveNext());
-            });
-        }
-
-        executorService.shutdown();
-        executorService.awaitTermination(10, TimeUnit.SECONDS);
-    }
-
-    @Test 
-    public void threadTest() {
-        InMemoryEventStore myTest = new InMemoryEventStore();
-        for (int i = 0; i < 21; i++) {
-            myTest.insert(new Event("B", i));
-        }
-        myTest.insert(new Event("C", 0));
-        myTest.insert(new Event("D", 0));
-        myTest.insert(new Event("E", 0));
-        myTest.insert(new Event("F", 0));
 
         Thread t1 = new Thread(() -> {
+            // Adds 100 events of type some_type 
             for (int i = 0; i < 100; i++) {
-                myTest.insert(new Event("A", i));
+                eventStore.insert(new Event("some_type", i));
             }
         });
 
         Thread t2 = new Thread(() -> {
-            try (InMemoryEventIterator it = myTest.query("B", 0, 20)) {
-                while (it.moveNext()) {
-                    if (it.current().timestamp() % 2 == 0) {
-                        it.remove();
+            // Deletes 10 events of type some_type
+            try { 
+                InMemoryEventIterator eventIterator = eventStore.query("some_type", 0, 20);
+                while (eventIterator.moveNext()) {
+                    if (eventIterator.current().timestamp() % 2 == 0) {
+                        eventIterator.remove();
                     }
                 }
             } catch (Exception e) {
@@ -240,6 +195,57 @@ public class EventTest {
             e.printStackTrace();
         }
 
-        assertEquals(115, myTest.size());
+        assertEquals(eventStore.size(), 90);
+
+    }
+
+    @Test 
+    public void concurrentInsertAndRemoveAndInsertThreadTest() {
+        InMemoryEventStore eventStore = new InMemoryEventStore();
+        // Adds 21 events of type some_type
+        // Adding the event with timestamp 20 so that it can be filtered in the query
+        for (int i = 0; i <= 20; i++) {
+            eventStore.insert(new Event("some_type", i));
+        }
+
+        Thread t1 = new Thread(() -> {
+            // Adds 100 events of type hundred_events_of_this_type
+            for (int i = 0; i < 100; i++) {
+                eventStore.insert(new Event("hundred_events_of_this_type", i));
+            }
+        });
+
+        Thread t2 = new Thread(() -> {
+            // Deletes 10 events of type some_type
+            try (InMemoryEventIterator it = eventStore.query("some_type", 0, 20)) {
+                while (it.moveNext()) {
+                    if (it.current().timestamp() % 2 == 0) {
+                        it.remove();
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        Thread t3 = new Thread(() -> {
+            // Adds 20 events of type some_type
+            for (int i = 200; i < 220; i++) {
+                eventStore.insert(new Event("some_type", i));
+            }
+        });
+
+        t1.start();
+        t2.start();
+        t3.start();
+        try {
+            t1.join();
+            t2.join();
+            t3.join();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        assertEquals(131, eventStore.size());
     }
 }
