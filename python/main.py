@@ -1,4 +1,4 @@
-from utils import Event, EventStore, CustomIterator
+from utils import Event, EventStore 
 
 if __name__ == "__main__":
     events = EventStore()
@@ -26,11 +26,21 @@ if __name__ == "__main__":
 
     query_events = events.query("a", 0, 5)
 
+    print(query_events.to_list())
     print(list(query_events))
     print(query_events.move_next())
     print(query_events.current())
     print(query_events.remove())
+    # print(query_events.current())
+    print(query_events.move_next())
+    print(query_events.current())
+    print(query_events.remove())
+    print(query_events.move_next())
+    print(query_events.current())
+    print(query_events.move_next())
     print(query_events.current())
 
+    query_events = events.query("a", 0, 5)
+    print([x.timestamp for x in list(query_events)])
 
     

@@ -23,6 +23,12 @@ class Node:
 
         :param new_event: The event to be inserted.
         """
+        # Adding a condition for when there is a remove operation
+        # and a node with no event is left
+        if self.event == None:
+            self.event = new_event
+            return 
+
         if new_event.timestamp < self.event.timestamp:
             if self.leftChild:
                 self.leftChild.insert(new_event)
@@ -40,6 +46,12 @@ class Node:
 
         :param new_node: The node to be inserted.
         """
+        # Adding condition for when there is a remove operation
+        # and a node with no event is left
+        if not self.event:
+            self.event = new_node.event
+            return 
+
         if new_node.event.timestamp < self.event.timestamp:
             if self.leftChild:
                 self.leftChild.insert_node(new_node)
@@ -109,6 +121,15 @@ class Node:
                 else:
                     self.event = None # TODO: Think what to do in this condition
 
+    def size(self):
+        size = 1 
+        if self.rightChild:
+            size += self.rightChild.size()
+        if self.leftChild:
+            size += self.leftChild.size()
+
+        return size
+
     def __str__(self):
         return f"Node with {self.event}, leftChild {self.leftChild} and rightChild {self.rightChild}"
 
@@ -168,12 +189,23 @@ class EventStore:
                 pass
 
     def query(self, event_type, start_time, end_time):
+        if start_time >= end_time:
+            raise ValueError("end_time must be greater than start_time")
+
         events_tree = self.event_map.get(event_type)
         if events_tree:
             events = events_tree.search(start_time, end_time)
             return EventIterator(self.event_map.get(event_type), events)
         else:
-            return EventIterator(None, [])
+            raise ValueError(f"No events of type {event_type}")
+
+    def size(self):
+        size = 0
+        for event_type, event_store in self.event_map.items():
+            size += event_store.size()
+
+        return size
+
 
 class EventIterator:
     """
@@ -182,33 +214,41 @@ class EventIterator:
     def __init__(self, tree, events):
         self.tree = tree
         self.events = events
-        self.iterator = CustomIterator(events)
         self.has_moved = False
+        self.index = -1
 
     def move_next(self):
         if not self.has_moved:
             self.has_moved = True
 
+        self.index += 1
+
         try:
-            next(self.iterator)
+            self.events[self.index]
             return True
-        except StopIteration:
+        except IndexError:
             return False
 
     def current(self):
-        if not self.has_moved:
+        if not self.has_moved or self.index == -1:
             raise IndexError("The iteration did not start yet.")
 
         try:
-            return next(self.iterator)
-        except StopIteration:
+            return self.events[self.index]
+        except IndexError:
             raise StopIteration("Iterator has ended.")
 
     def remove(self):
-        self.iterator.remove() 
+        self.tree.remove(self.events[self.index].timestamp)
+        self.events.pop(self.index) 
+        self.index -= 1
 
     def __iter__(self):
-        return self.iterator
+        for idx, val in enumerate(self.events):
+            yield val
+
+    def to_list(self):
+        return self.events
 
 class CustomIterator:
     def __init__(self, tree, events):
@@ -217,10 +257,13 @@ class CustomIterator:
         self.index = -1 
 
     def __iter__(self):
-        return self
+        for idx, val in enumerate(self.events):
+            yield val
 
     def __next__(self):
         self.index += 1
+        print(self.index)
+        print(len(self.events))
         if self.index < len(self.events):
             return self.events[self.index]
         raise StopIteration
