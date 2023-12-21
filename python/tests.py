@@ -52,14 +52,14 @@ class EventTest(unittest.TestCase):
             event_store.insert(Event("some_type", i))
         event_iterator = event_store.query("some_type", 5, 20)
         with self.assertRaises(IndexError):
-            this_should_not_exist = event_iterator.current()
+            event_iterator.current()
 
     def test_end_time_must_be_greater_than_start_time(self):
         event_store = EventStore()
         for i in range(20):
             event_store.insert(Event("some_type", i))
         with self.assertRaises(ValueError):
-            event_iterator = event_store.query("some_type", 20, 5)
+            event_store.query("some_type", 20, 5)
 
     def test_query_length_and_remove_all(self):
         event_store = EventStore()
@@ -77,7 +77,7 @@ class EventTest(unittest.TestCase):
         self.assertFalse(iterator.move_next())
         event_store.remove_all("some_type")
         with self.assertRaises(ValueError):
-            iterator = event_store.query("some_type", 0, 3)
+            event_store.query("some_type", 0, 3)
 
     def test_concurrent_insert_and_remove(self):
         event_store = EventStore()

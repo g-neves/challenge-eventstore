@@ -17,7 +17,7 @@ class Node:
         self.leftChild = leftChild 
         self.rightChild = rightChild 
 
-    def insert(self, new_event):
+    def insert(self, new_node):
         """
         Inserts a new event into the binary tree.
 
@@ -25,46 +25,22 @@ class Node:
         """
         # Adding a condition for when there is a remove operation
         # and a node with no event is left
-        if self.event == None:
-            self.event = new_event
-            return 
-
-        if new_event.timestamp < self.event.timestamp:
-            if self.leftChild:
-                self.leftChild.insert(new_event)
-            else:
-                self.leftChild = Node(new_event)
-        else:
-            if self.rightChild:
-                self.rightChild.insert(new_event)
-            else:
-                self.rightChild = Node(new_event)
-
-    def insert_node(self, new_node):
-        """
-        Inserts a new node into the binary tree.
-
-        :param new_node: The node to be inserted.
-        """
-        # Adding condition for when there is a remove operation
-        # and a node with no event is left
-        if not self.event:
+        if self.event is None:
             self.event = new_node.event
             return 
 
         if new_node.event.timestamp < self.event.timestamp:
             if self.leftChild:
-                self.leftChild.insert_node(new_node)
+                self.leftChild.insert(new_node)
             else:
                 self.leftChild = new_node
         else:
             if self.rightChild:
-                self.rightChild.insert_node(new_node)
+                self.rightChild.insert(new_node)
             else:
                 self.rightChild = new_node
 
-
-    def search(self, low, high, ret_val=None, value_to_ignore=None):
+    def search(self, low, high, ret_val=None):
         """
         Searches for events within a specified timestamp range in the binary tree.
 
@@ -110,7 +86,7 @@ class Node:
                 self.rightChild = self.rightChild.rightChild 
                 self.leftChild = self.rightChild.leftChild
                 if self.leftChild:
-                    self.leftChild.insert_node(tmp_node)
+                    self.leftChild.insert(tmp_node)
                 else:
                     self.leftChild = tmp_node
             else:
@@ -119,7 +95,7 @@ class Node:
                     self.rightChild = self.leftChild.rightChild
                     self.leftChild = self.leftChild.leftChild
                 else:
-                    self.event = None # TODO: Think what to do in this condition
+                    self.event = None 
 
     def size(self):
         size = 1 
@@ -169,7 +145,7 @@ class EventStore:
         """
         with self.semaphore:
             if self.event_map.get(event_to_insert.event_type):
-                self.event_map.get(event_to_insert.event_type).insert(event_to_insert)
+                self.event_map.get(event_to_insert.event_type).insert(Node(event_to_insert))
             else:
                 self.event_map[event_to_insert.event_type] = Node(event_to_insert) 
 
@@ -244,35 +220,8 @@ class EventIterator:
         self.index -= 1
 
     def __iter__(self):
-        for idx, val in enumerate(self.events):
-            yield val
-
-    def to_list(self):
-        return self.events
-
-class CustomIterator:
-    def __init__(self, tree, events):
-        self.tree = tree
-        self.events = events
-        self.index = -1 
-
-    def __iter__(self):
-        for idx, val in enumerate(self.events):
-            yield val
-
-    def __next__(self):
-        self.index += 1
-        print(self.index)
-        print(len(self.events))
-        if self.index < len(self.events):
-            return self.events[self.index]
-        raise StopIteration
-
-    def remove(self):
-        self.tree.remove(self.events[self.index])
-        self.events.pop(self.index) 
-        # Note: If there is no more elements to pop,
-        # it will throw an IndexError
+        for event in self.events:
+            yield event
 
     def to_list(self):
         return self.events
